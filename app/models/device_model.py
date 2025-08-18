@@ -1,5 +1,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Enum as Enum
-from app.models.Base import Base
+from app.models.client_model import Client
+from sqlalchemy.orm import relationship
+from app.models.base import Base
 from app.models.Status import Status
 
 class Device(Base):
@@ -10,3 +12,5 @@ class Device(Base):
     status = Column(Enum(Status), default=Status.DISCONNECTED, nullable=False)
     location = Column(String, nullable=True)
     payload = Column(String, nullable=True)
+
+    client=relationship("Client", back_populates="devices")
