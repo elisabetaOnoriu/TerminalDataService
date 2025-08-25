@@ -1,16 +1,18 @@
 import pytest
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from app.models.base import Base
-from sqlalchemy import Table, Column, Integer, String
-#
-# clients_table = Table(
-#     "clients",
-#     Base.metadata,
-#     Column("client_id", Integer, primary_key=True),
-#     Column("name", String)
-# )
+from app.helpers.database import get_db
+from main import app
+
+from fastapi.testclient import TestClient
+
+"""Create an in-memory SQLite engine for the test session.
+
+  Returns:
+      Engine: SQLAlchemy engine connected to an in-memory database.
+  """
 
 @pytest.fixture(scope="session")
 def engine():
@@ -19,18 +21,15 @@ def engine():
         connect_args={"check_same_thread": False},
         poolclass=StaticPool
     )
-
-    #creezi tabelele
     Base.metadata.create_all(bind=engine)
-
-    with engine.connect() as conn:
-        conn.execute(text("""
-            INSERT INTO clients (client_id, name)
-            VALUES (1, 'Test Client')
-        """))
-
     return engine
 
+"""
+    Provide a transactional scope around each test function.
+
+    Yields:
+        Session: SQLAlchemy session bound to a single transaction.
+"""
 
 @pytest.fixture(scope="function")
 def session(engine):
@@ -44,3 +43,24 @@ def session(engine):
     session.close()
     transaction.rollback()
     connection.close()
+
+
+"""
+    FastAPI TestClient with database dependency overridden.
+
+    Overrides `get_db` to use the test session, ensuring tests
+    run against the in-memory database instead of the real one.
+
+    Yields:
+        TestClient: FastAPI test client with isolated DB context.
+        
+"""
+@pytest.fixture()
+def client(session):
+    def override_get_db():
+        yield session
+
+    app.dependency_overrides[get_db] = override_get_db
+    with TestClient(app) as c:
+        yield c
+    app.dependency_overrides.clear()

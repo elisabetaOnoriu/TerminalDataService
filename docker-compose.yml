@@ -1,0 +1,53 @@
+services:
+  localstack:
+    image: localstack/localstack:latest
+    container_name: localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=sqs
+      - DEBUG=1
+      - AWS_DEFAULT_REGION=eu-central-1
+    volumes:
+      - ./localstack/init:/etc/localstack/init/ready.d
+    healthcheck:
+      test: ["CMD", "bash", "-c", "awslocal --version >/dev/null 2>&1 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: terminal-service-app
+    command: >
+      bash -lc "uvicorn terminal_service.main:app --host 0.0.0.0 --port 8000 --reload"
+    ports:
+      - "8000:8000"
+    environment:
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_REGION=eu-central-1
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - TERMINAL_SQS_QUEUE_NAME=terminal-events-queue
+    depends_on:
+      localstack:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: terminal-service-worker
+    command: >
+      bash -lc "python -m terminal_service.worker"
+    environment:
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_REGION=eu-central-1
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - TERMINAL_SQS_QUEUE_NAME=terminal-events-queue
+    depends_on:
+      localstack:
+        condition: service_healthy

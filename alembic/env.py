@@ -7,6 +7,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from app.models.device_model import Device
 from app.models.client_model import Client
+#from app.models.message_model import Message
 
 from app.models.base import Base
 
