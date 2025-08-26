@@ -1,63 +1,63 @@
-from app.models.client_model import Client
-from fastapi.testclient import TestClient
+# tests/test_client.py
+import pytest
+from httpx import Response
+from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncEngine
 from main import app
+from app.helpers.database import get_db
 
-"""Persist a new Client and ensure it receives a primary key.
+PATH = "/client/clients"
 
-    Args:
-        session: SQLAlchemy session fixture bound to the test database.
-    """
-def test_add_new_client(session):
-    client1=Client(
-        name= "John doe"
-    )
-    session.add(client1)
-    session.commit()
-    session.refresh(client1)
+@pytest.mark.anyio
+async def test_create_client_success(client):
+    r: Response = await client.post(PATH, json={"name": "Acme Corp"})
+    assert r.status_code == 201, r.text
+    data = r.json()
+    assert data["name"] == "Acme Corp"
+    assert any(k.endswith("id") for k in data.keys())
 
-    assert client1.client_id is not None
-    print(client1.name)
+@pytest.mark.anyio
+async def test_create_client_duplicate_returns_409(client):
+    payload = {"name": "Duplicate Co"}
+    r1 = await client.post(PATH, json=payload)
+    assert r1.status_code == 201, r1.text
 
-client = TestClient(app)
+    r2 = await client.post(PATH, json=payload)
+    assert r2.status_code == 409, r2.text
+    assert "detail" in r2.json()
 
-"""Create a client and a device via API, then assign the device to the client.
+@pytest.mark.anyio
+async def test_create_client_validation_error_returns_422(client):
+    r = await client.post(PATH, json={"name": ""})
+    assert r.status_code == 422, r.text
+    body = r.json()
+    assert "detail" in body and isinstance(body["detail"], list)
 
- Flow:
-     1) POST /client/clients -> create client, capture client_id
-     2) POST /devices/devices/ -> create device, capture device_id
-     3) PUT /client/client/devices -> assign device to client
-     4) Verify response payload mirrors created resources
+    r2 = await client.post(PATH)  # lipsă body
+    assert r2.status_code == 422, r2.text
 
- Args:
-     client: FastAPI TestClient fixture with DB dependency overridden.
- """
+@pytest.mark.anyio
+async def test_create_client_internal_error_returns_500(client, async_engine: AsyncEngine):
+    from sqlalchemy.ext.asyncio import AsyncSession as _AsyncSession
 
-def test_assign_device_to_client(client):
+    class BrokenSession(_AsyncSession):
+        async def commit(self, *args, **kwargs):  # type: ignore[override]
+            raise RuntimeError("Forced commit failure")
 
-    response_client = client.post("/client/clients", json={"name": "TestClient"})
-    assert response_client.status_code == 200
-    client_id = response_client.json()["client_id"]
+    broken_factory = async_sessionmaker(bind=async_engine, class_=BrokenSession, expire_on_commit=False)
 
-    response_device = client.post("/devices/devices/", json={
-        "client_id": 1,
-        "name": "DeviceToAssign",
-        "status": "disconnected",
-        "location": "Lab",
-        "payload": "test"
-    })
-    assert response_device.status_code == 200
-    device_id = response_device.json()["device_id"]
+    async def broken_get_db():
+        async with broken_factory() as s:
+            yield s
 
-    assign_response = client.put("/client/client/devices", params={
-        "client_id": client_id,
-        "device_id": device_id
-    })
-    assert assign_response.status_code == 201
-
-    data = assign_response.json()
-    assert data["client_id"] == client_id
-    assert data["device_id"] == device_id
-    assert data["name"] == "DeviceToAssign"
-    assert data["status"] == "disconnected"
-    assert data["location"] == "Lab"
-    assert data["payload"] == "test"
+    prev_override = app.dependency_overrides.get(get_db)
+    app.dependency_overrides[get_db] = broken_get_db
+    try:
+        r = await client.post(PATH, json={"name": "Boom"})
+        assert r.status_code == 500, r.text
+        assert r.json().get("detail") == "Internal error while creating the client."
+    finally:
+        if prev_override is not None:
+            app.dependency_overrides[get_db] = prev_override
+        else:
+            app.dependency_overrides.pop(get_db, None)

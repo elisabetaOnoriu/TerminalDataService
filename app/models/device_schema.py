@@ -18,4 +18,4 @@ class DeviceRead(BaseModel):
     name: str
     status: str
     location: str | None = None
-    payload: dict[str, Any] | None = None
+    payload: str| None = None

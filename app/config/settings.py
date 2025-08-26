@@ -1,3 +1,6 @@
+"""
+verify .env settings
+"""
 from __future__ import annotations
 from functools import lru_cache
 from typing import Optional, Literal
@@ -42,7 +45,8 @@ class Settings(BaseSettings):
     @property
     def sqs_effective_endpoint(self) -> Optional[str]:
         """Return the effective SQS endpoint (SQS_ENDPOINT_URL > LOCALSTACK_ENDPOINT > None)."""
-        return str(self.SQS_ENDPOINT_URL or self.LOCALSTACK_ENDPOINT) if (self.SQS_ENDPOINT_URL or self.LOCALSTACK_ENDPOINT) else None
+        return str(self.SQS_ENDPOINT_URL or self.LOCALSTACK_ENDPOINT) \
+            if (self.SQS_ENDPOINT_URL or self.LOCALSTACK_ENDPOINT) else None
 
     @property
     def queue_url(self) -> Optional[str]:
@@ -67,6 +71,7 @@ class Settings(BaseSettings):
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
+    """ return settings"""
     try:
         s = Settings()
         s.ensure_valid()

@@ -1,17 +1,18 @@
 """
-This module defines the endpoint for retrieving messages stored in the database.
-The endpoint accepts a timestamp (ISO 8601 format) and returns all messages
-newer than that timestamp as a JSON list. Each message includes ID, timestamp,
-and the raw payload.
+Async endpoints for retrieving messages from the database.
 
+Accepts an ISO 8601 timestamp and returns all messages newer than that
+timestamp as a JSON list (id, timestamp, payload).
 """
 
 import logging
 from datetime import datetime, timezone
 from typing import List
 
-from fastapi import APIRouter, Depends, Query, HTTPException
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, Query, HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.helpers.database import get_db
 from app.models.message_model import Message
@@ -22,9 +23,8 @@ logger = logging.getLogger(__name__)
 
 def _parse_iso_timestamp(ts: str) -> datetime:
     """
-    Parses an ISO 8601 timestamp string into a timezone-aware datetime object.
-    If the string ends with 'Z', it's interpreted as UTC.
-
+    Parse an ISO 8601 timestamp into a timezone-aware datetime (UTC by default).
+    If the string ends with 'Z', treat it as UTC. If it has no tzinfo, assume UTC.
     """
     try:
         if ts.endswith("Z"):
@@ -37,28 +37,50 @@ def _parse_iso_timestamp(ts: str) -> datetime:
         logger.warning("Invalid ISO timestamp format received: %s", ts)
         raise HTTPException(status_code=400, detail="Invalid ISO 8601 timestamp") from exc
 
-@router.get("", response_model=List[MessageResponse], tags=["Messages"])
-def get_messages(
+
+@router.get(
+    "",
+    response_model=List[MessageResponse],
+    tags=["Messages"],
+    summary="Get messages newer than a given timestamp",
+    responses={
+        200: {"description": "List of messages"},
+        400: {"description": "Invalid timestamp"},
+        500: {"description": "Database error while fetching messages"},
+    },
+)
+async def get_messages(
     since: str = Query(..., description="ISO 8601 UTC timestamp"),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ) -> List[MessageResponse]:
     """
-    Returns all messages newer than the given ISO 8601 timestamp.
-
+    Return all messages with `timestamp` strictly greater than the provided ISO 8601 timestamp.
     """
     logger.info("Fetching messages since timestamp: %s", since)
     since_dt = _parse_iso_timestamp(since)
 
-    messages = (
-        db.query(Message)
-        .filter(Message.timestamp > since_dt)
-        .order_by(Message.timestamp)
-        .all()
-    )
+    try:
+        stmt = (
+            select(Message)
+            .where(Message.timestamp > since_dt)
+            .order_by(Message.timestamp)
+        )
+        result = await db.execute(stmt)
+        rows = result.scalars().all()
 
-    if not messages:
-        logger.info("No messages found after %s", since_dt)
-        return []
+        if not rows:
+            logger.info("No messages found after %s", since_dt)
+            return []
 
-    logger.info("Found %d messages after %s", len(messages), since_dt)
-    return messages
+        logger.info("Found %d messages after %s", len(rows), since_dt)
+        return [
+            MessageResponse(id=m.id, timestamp=m.timestamp, payload=m.payload)
+            for m in rows
+        ]
+
+    except SQLAlchemyError as e:
+        logger.error("Database error while fetching messages: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database error while fetching messages",
+        ) from e

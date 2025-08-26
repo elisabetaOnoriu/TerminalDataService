@@ -57,7 +57,7 @@ async def create_device(
             except Exception as e:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Invalid payload JSON: %s" % e
+                    detail=f"Invalid payload JSON: {e}"
                 ) from e
 
         new_device = Device(**data)

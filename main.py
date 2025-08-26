@@ -10,11 +10,10 @@ from app.models.base import Base
 
 setup_logging()
 logger=logging.getLogger(__name__)
-#print("Metadata tables:", Base.metadata.tables.keys())
 try:
     app = FastAPI()
     app.include_router(all_routes)
-    print(app.routes)
+   # print(app.routes)
 
     logger.info(" FastAPI app and routes initialized")
 except Exception as e:
