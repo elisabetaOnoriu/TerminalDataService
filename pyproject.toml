@@ -18,6 +18,7 @@ awscli-local = "^0.22.2"
 pydantic-settings = "^2.10.1"
 localstack = "^4.7.0"
 aiosqlite = "^0.21.0"
+awscli = "^1.42.17"
 
 [tool.poetry.group.dev.dependencies]
 alembic = "^1.16.4"
