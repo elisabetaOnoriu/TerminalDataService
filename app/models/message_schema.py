@@ -14,7 +14,6 @@ class MessageResponse(BaseModel):
     timestamp: datetime
     payload: str
 
-    class Config:
-        model_config = {
-            "from_attributes": True
-        }
+    model_config = {
+        "from_attributes": True
+    }

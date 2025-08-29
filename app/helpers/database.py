@@ -33,7 +33,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         try:
             yield session
         except Exception as e:
-            logger.error(f"Eroare în get_db: {e}")
+            logger.error(f"Error in get_db: {e}")
             raise
         finally:
             logger.info("Closing async DB session")
