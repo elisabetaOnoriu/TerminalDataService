@@ -8,7 +8,7 @@ packages = [{ include = "app" }]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-sqlalchemy = ">=2.0.42,<3.0.0"
+sqlalchemy = {extras = ["asyncio"], version = "^2.0.43"}
 psycopg2-binary = ">=2.9.10,<3.0.0"
 fastapi = "^0.116.1"
 uvicorn = "^0.35.0"
@@ -19,6 +19,8 @@ pydantic-settings = "^2.10.1"
 localstack = "^4.7.0"
 aiosqlite = "^0.21.0"
 awscli = "^1.42.17"
+asyncpg = "^0.30.0"
+alembic = "^1.16.5"
 
 [tool.poetry.group.dev.dependencies]
 alembic = "^1.16.4"
@@ -27,6 +29,7 @@ awscli-local = "^0.22.2"
 pytest-asyncio = "^1.1.0"
 httpx = "^0.28.1"
 aiosqlite = "^0.21.0"
+moto = {extras = ["boto3"], version = "^5.1.11"}
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
