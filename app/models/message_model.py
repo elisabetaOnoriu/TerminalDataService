@@ -1,6 +1,6 @@
 """Represents a message entity in the system."""
 from __future__ import annotations
-from sqlalchemy import  DateTime,Text, text
+from sqlalchemy import DateTime, Text, text, Integer, ForeignKey
 from app.models.base import Base
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -9,6 +9,11 @@ class Message(Base):
     __tablename__ = "messages"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    device_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("devices.device_id", ondelete="CASCADE"),
+        index=True,
+        nullable=False
+    )
     timestamp: Mapped["DateTime"] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
