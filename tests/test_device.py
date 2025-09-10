@@ -23,7 +23,7 @@ async def test_create_device_success_minimal(client, async_session: AsyncSession
     c = await _mk_client(async_session, "Client for minimal device")
     payload = {
         "name": "Device One",
-        "status": "connected",     # <-- lowercase
+        "status": "connected",
         "client_id": c.client_id,
     }
     r: Response = await client.post(PATH, json=payload)
@@ -45,12 +45,11 @@ async def test_create_device_serializes_payload_dict(client, async_session: Asyn
     c = await _mk_client(async_session, "Client for payload dict")
 
     raw_payload = {"a": 1, "b": {"c": True}}
-    # serialize the dict to string before sending
     payload = {
         "name": "Device With Dict Payload",
         "status": "connected",
         "client_id": c.client_id,
-        "payload": json.dumps(raw_payload),  # <-- string, not dict
+        "payload": json.dumps(raw_payload),
     }
 
     r: Response = await client.post(PATH, json=payload)
@@ -58,7 +57,6 @@ async def test_create_device_serializes_payload_dict(client, async_session: Asyn
 
     body = r.json()
     assert isinstance(body["payload"], str)
-    # decode string back to dict and compare
     assert json.loads(body["payload"]) == raw_payload
 
 
@@ -75,7 +73,7 @@ async def test_create_device_invalid_payload_returns_422(client, async_session: 
         "name": "Device Bad Payload",
         "status": "connected",
         "client_id": c.client_id,
-        "payload": bad_payload,  # <-- wrong type
+        "payload": bad_payload,
     }
 
     r: Response = await client.post(PATH, json=payload)
@@ -89,7 +87,7 @@ async def test_create_device_invalid_payload_returns_422(client, async_session: 
 async def test_create_device_validation_error_422_missing_name(client, async_session: AsyncSession):
     c = await _mk_client(async_session, "Client for 422")
     payload = {
-        "status": "connected",     # <-- lowercase
+        "status": "connected",
         "client_id": c.client_id,
     }
     r: Response = await client.post(PATH, json=payload)
@@ -103,7 +101,7 @@ async def test_create_device_db_error_returns_500(client, async_session: AsyncSe
     c = await _mk_client(async_session, "Client for 500")
     payload = {
         "name": "Device Boom",
-        "status": "connected",     # <-- lowercase
+        "status": "connected",
         "client_id": c.client_id,
     }
     from sqlalchemy.exc import SQLAlchemyError

@@ -1,4 +1,3 @@
-# tests/test_client.py
 import pytest
 from httpx import Response
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
@@ -33,7 +32,7 @@ async def test_create_client_validation_error_returns_422(client):
     body = r.json()
     assert "detail" in body and isinstance(body["detail"], list)
 
-    r2 = await client.post(PATH)  # lipsă body
+    r2 = await client.post(PATH)
     assert r2.status_code == 422, r2.text
 
 @pytest.mark.anyio
@@ -41,7 +40,7 @@ async def test_create_client_internal_error_returns_500(client, async_engine: As
     from sqlalchemy.ext.asyncio import AsyncSession as _AsyncSession
 
     class BrokenSession(_AsyncSession):
-        async def commit(self, *args, **kwargs):  # type: ignore[override]
+        async def commit(self, *args, **kwargs):
             raise RuntimeError("Forced commit failure")
 
     broken_factory = async_sessionmaker(bind=async_engine, class_=BrokenSession, expire_on_commit=False)

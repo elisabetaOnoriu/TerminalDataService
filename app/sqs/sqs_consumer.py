@@ -1,16 +1,15 @@
 from __future__ import annotations
-import os
 import json
 import asyncio
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 import boto3
 import xml.etree.ElementTree as ET
 from botocore.config import Config as BotoConfig
+from app.config.settings import Settings
 
 logger = logging.getLogger(__name__)
-
 
 class SQSConsumer:
     """
@@ -22,16 +21,21 @@ class SQSConsumer:
 
     """
 
-    def __init__(self) -> None:
-        self.queue_url: str = os.environ["SQS_QUEUE_URL"]
-        self.poll_interval: float = float(os.environ["SQS_POLL_INTERVAL"])
-        self.wait_time_seconds: int = int(os.environ["SQS_WAIT_TIME_SECONDS"])
-        self.max_messages: int = int(os.environ["SQS_MAX_MESSAGES"])
-        self.visibility_timeout: int = int(os.environ["SQS_VISIBILITY_TIMEOUT"])
-        self.thread_pool_size: int = int(os.environ["SQS_THREAD_POOL_SIZE"])
+    def __init__(self, settings: Settings) -> None:
+        """
+         Asynchronous SQS consumer
+         - Polls SQS via boto3.receive_message (run in a thread to avoid blocking the event loop)
+         - Dispatches each received message to a ThreadPoolExecutor worker (one thread per message)
+         - Worker schedules async processing+deletion on the event loop
+         - On success → delete_message; on failure → DO NOT delete (SQS redelivers after visibility timeout)
 
-        region_name = os.environ["AWS_REGION"]
-        endpoint_url = os.environ.get("AWS_ENDPOINT_URL")
+         """
+        self.queue_url = str(settings.SQS_QUEUE_URL)
+        self.poll_interval = settings.SQS_POLL_INTERVAL
+        self.wait_time_seconds = settings.SQS_WAIT_TIME_SECONDS
+        self.max_messages = settings.SQS_MAX_MESSAGES
+        self.visibility_timeout = settings.SQS_VISIBILITY_TIMEOUT
+        self.thread_pool_size = settings.SQS_THREAD_POOL_SIZE
 
         self._loop: asyncio.AbstractEventLoop | None = None
         self._stop = asyncio.Event()
@@ -39,12 +43,14 @@ class SQSConsumer:
             max_workers=self.thread_pool_size,
             thread_name_prefix="sqs-worker",
         )
-        self._task: Optional[asyncio.Task] = None
+        self._task = None
 
         self._sqs = boto3.client(
             "sqs",
-            region_name=region_name,
-            endpoint_url=endpoint_url,
+            region_name=settings.AWS_REGION,
+            endpoint_url=settings.sqs_effective_endpoint,
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
             config=BotoConfig(retries={"max_attempts": 10, "mode": "standard"}),
         )
 
@@ -89,7 +95,7 @@ class SQSConsumer:
                         WaitTimeSeconds=self.wait_time_seconds,
                         VisibilityTimeout=self.visibility_timeout,
                     ),
-                )
+                 )
                 messages = resp.get("Messages", [])
                 if not messages:
                     await asyncio.sleep(self.poll_interval)

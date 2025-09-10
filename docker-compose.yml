@@ -1,4 +1,17 @@
- app:
+services:
+  localstack:
+    image: localstack/localstack:latest
+    container_name: localstack
+    environment:
+      - .env
+    ports:
+      - "4566:4566"
+    volumes:
+      - "./.localstack:/var/lib/localstack"
+    networks:
+      - sky-comm
+
+  app:
     build:
       context: .
       dockerfile: Dockerfile
@@ -10,6 +23,10 @@
     env_file:
       - .env
     depends_on:
-      localstack:
-        condition: service_healthy
+      - localstack
+    networks:
+      - sky-comm
 
+networks:
+  sky-comm:
+    external: true
