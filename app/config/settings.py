@@ -8,7 +8,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     model_config = {"env_file": ".env", "extra": "ignore"}
 
-    # AWS / SQS
+
     AWS_ACCESS_KEY_ID: str = Field(..., description="AWS access key (required)")
     AWS_SECRET_ACCESS_KEY: str = Field(..., description="AWS secret key (required)")
     AWS_REGION: str = Field(..., description="AWS region (required)")
@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     SQS_QUEUE_URL: AnyUrl = Field(..., description="Full SQS queue URL (required)")
     SQS_ENDPOINT_URL: AnyUrl | None = None
 
-    # DB
+
     DB_USER: str = Field(..., description="DB user")
     DB_HOST: str = Field(..., description="DB host")
     DB_PORT: int = Field(..., description="DB port")
@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     DB_PASS_FILE: str = Field(..., description="Path to file that contains ONLY the password")
     DATABASE_URL: str | None = None
 
-    # Consumer
+
     SQS_POLL_INTERVAL: float = Field(..., gt=0)
     SQS_WAIT_TIME_SECONDS: int = Field(..., ge=1, le=20)
     SQS_MAX_MESSAGES: int = Field(..., ge=1, le=10)
@@ -52,7 +52,6 @@ class Settings(BaseSettings):
 
     @property
     def sqs_effective_endpoint(self) -> Optional[str]:
-        # în setup-ul actual folosim doar SQS_ENDPOINT_URL
         return str(self.SQS_ENDPOINT_URL) if self.SQS_ENDPOINT_URL else None
 
 

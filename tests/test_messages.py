@@ -30,7 +30,6 @@ async def test_get_messages_returns_empty_list_when_none_newer(client, async_ses
     """
     When there are no messages newer than the provided timestamp, the endpoint returns 200 + [].
     """
-    # choose a future cutoff to be sure we get an empty list
     cutoff = datetime.now(timezone.utc) + timedelta(days=365)
     r: Response = await client.get(PATH, params={"since": cutoff.isoformat().replace("+00:00", "Z")})
     assert r.status_code == 200, r.text

@@ -29,7 +29,7 @@ class MessageSummary:
         if ts_str:
 
             dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
-            ts_eu = dt.strftime("%d.%m.%Y %H:%M:%S")  # european
+            ts_eu = dt.strftime("%d.%m.%Y %H:%M:%S")
 
         return cls(
             message_id=parsed.findtext("x:Header/x:MessageID", namespaces=NS),
