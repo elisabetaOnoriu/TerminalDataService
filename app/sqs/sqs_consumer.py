@@ -8,6 +8,7 @@ import boto3
 import xml.etree.ElementTree as ET
 from botocore.config import Config as BotoConfig
 from app.config.settings import Settings
+from app.models.MessageSummary import MessageSummary
 
 logger = logging.getLogger(__name__)
 
@@ -164,8 +165,9 @@ class SQSConsumer:
             ),
         )
 
-    async def _process_message(self, body: Dict[str, Any]) -> None:
-        """
-        Dummy process logic
-        """
-        logger.info("Processed message: %s", body)
+    async def _process_message(self, body: dict) -> None:
+        summary = MessageSummary.from_body(body)
+        logger.info(
+            "Processed message | device=%s client=%s sensor=%s value=%s%s time=%s",
+            summary.device_id, summary.client_id, summary.sensor, summary.value, summary.unit, summary.timestamp
+        )

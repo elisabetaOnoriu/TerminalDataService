@@ -1,3 +1,4 @@
-pycache
+_pycache_
 .idea
 app/helpers/db_password.txt
+.localstack/cache

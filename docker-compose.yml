@@ -2,7 +2,7 @@ services:
   localstack:
     image: localstack/localstack:latest
     container_name: localstack
-    environment:
+    env_file:
       - .env
     ports:
       - "4566:4566"
@@ -17,7 +17,7 @@ services:
       dockerfile: Dockerfile
     container_name: terminal-service-app
     command: >
-      bash -lc "uvicorn terminal_service.main:app --host 0.0.0.0 --port 8000"
+      bash -lc "uvicorn main:app --host 0.0.0.0 --port 8000"
     ports:
       - "8000:8000"
     env_file:
