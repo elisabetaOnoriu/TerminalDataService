@@ -7,13 +7,14 @@ from app.controllers.device_controller import router as device_router
 from logging_config import setup_logging
 import logging
 from app.models.base import Base
+from app.sqs.lifespan import lifespan
 
 setup_logging()
 logger=logging.getLogger(__name__)
 try:
-    app = FastAPI()
+    app = FastAPI(lifespan=lifespan)
     app.include_router(all_routes)
-   # print(app.routes)
+#    print(app.routes)
 
     logger.info(" FastAPI app and routes initialized")
 except Exception as e:

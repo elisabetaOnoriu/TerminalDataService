@@ -1,81 +1,62 @@
-"""
-verify .env settings
-"""
+# app/config/settings.py
 from __future__ import annotations
-from functools import lru_cache
-from typing import Optional, Literal
-from pydantic import Field, AnyUrl, ValidationError
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pathlib import Path
+from typing import Optional
+from pydantic import Field, AnyUrl, ValidationError, model_validator
+from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    """Application settings loaded from environment variables (.env)."""
+    model_config = {"env_file": ".env", "extra": "ignore"}
 
-    # Allow .env and ignore extra variables
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # --- App env ---
-    ENV: Literal["local", "dev", "staging", "prod"] = "local"
+    AWS_ACCESS_KEY_ID: str = Field(..., description="AWS access key (required)")
+    AWS_SECRET_ACCESS_KEY: str = Field(..., description="AWS secret key (required)")
+    AWS_REGION: str = Field(..., description="AWS region (required)")
 
-    # --- AWS / LocalStack configuration ---
-    AWS_ACCESS_KEY_ID: str = Field(default="test")
-    AWS_SECRET_ACCESS_KEY: str = Field(default="test")
-    AWS_REGION: str = Field(default="eu-central-1")
+    SQS_QUEUE_URL: AnyUrl = Field(..., description="Full SQS queue URL (required)")
+    SQS_ENDPOINT_URL: AnyUrl | None = None
 
-    # LocalStack base endpoint (containers: http://localstack:4566, host: http://localhost:4566)
-    LOCALSTACK_ENDPOINT: Optional[AnyUrl] = Field(default="http://localhost:4566")
 
-    # Optional explicit SQS endpoint (overrides LOCALSTACK_ENDPOINT if provided)
-    SQS_ENDPOINT_URL: Optional[AnyUrl] = None
+    DB_USER: str = Field(..., description="DB user")
+    DB_HOST: str = Field(..., description="DB host")
+    DB_PORT: int = Field(..., description="DB port")
+    DB_NAME: str = Field(..., description="DB name")
+    DB_PASS_FILE: str = Field(..., description="Path to file that contains ONLY the password")
+    DATABASE_URL: str | None = None
 
-    # Optional: explicit full queue URL (if set, use this and skip construction)
-    TERMINAL_SQS_QUEUE_URL: Optional[AnyUrl] = None
 
-    # Fallback pieces to build a LocalStack queue URL when TERMINAL_SQS_QUEUE_URL is not set
-    ACCOUNT_ID: str = Field(default="000000000000")
-    QUEUE_NAME: str = Field(default="device-messages")
+    SQS_POLL_INTERVAL: float = Field(..., gt=0)
+    SQS_WAIT_TIME_SECONDS: int = Field(..., ge=1, le=20)
+    SQS_MAX_MESSAGES: int = Field(..., ge=1, le=10)
+    SQS_THREAD_POOL_SIZE: int = Field(..., ge=1)
+    SQS_VISIBILITY_TIMEOUT: int = Field(..., ge=1)
 
-    # --- Simulation knobs (optional, used by simulators/tests) ---
-    NUM_DEVICES: int = Field(default=3, ge=1)
-    SEND_INTERVAL_SEC: int = Field(default=2, ge=1, le=5)
+    @model_validator(mode="after")
+    def _post_validate(self) -> "Settings":
+        if str(self.SQS_QUEUE_URL).startswith(("http://localhost:4566", "https://localhost:4566")) \
+           and not self.SQS_ENDPOINT_URL:
+            raise ValueError(
+                "SQS_QUEUE_URL points to LocalStack but no SQS_ENDPOINT_URL provided. "
+                "Set SQS_ENDPOINT_URL=http://localhost:4566"
+            )
 
-    # Optional database DSN (some services may use it)
-    DATABASE_URL: Optional[str] = None
+        if not self.DATABASE_URL:
+            pw_path = Path(self.DB_PASS_FILE)
+            if not pw_path.exists():
+                raise ValueError(f"DB_PASS_FILE not found: {pw_path}")
+            password = pw_path.read_text(encoding="utf-8").strip()
+            self.DATABASE_URL = (
+                f"postgresql+asyncpg://{self.DB_USER}:{password}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+            )
+        return self
 
-    # ---- Derived helpers ----
     @property
     def sqs_effective_endpoint(self) -> Optional[str]:
-        """Return the effective SQS endpoint (SQS_ENDPOINT_URL > LOCALSTACK_ENDPOINT > None)."""
-        return str(self.SQS_ENDPOINT_URL or self.LOCALSTACK_ENDPOINT) \
-            if (self.SQS_ENDPOINT_URL or self.LOCALSTACK_ENDPOINT) else None
-
-    @property
-    def queue_url(self) -> Optional[str]:
-        """Return explicit queue URL if provided, otherwise construct LocalStack-style URL."""
-        if self.TERMINAL_SQS_QUEUE_URL:
-            return str(self.TERMINAL_SQS_QUEUE_URL)
-        if self.sqs_effective_endpoint:
-            # LocalStack queue URL format: {endpoint}/{account_id}/{queue_name}
-            base = self.sqs_effective_endpoint.rstrip("/")
-            return f"{base}/{self.ACCOUNT_ID}/{self.QUEUE_NAME}"
-        return None
-
-    def ensure_valid(self) -> None:
-        """Fail fast on invalid combinations."""
-        # In prod, you likely don't want to hit LocalStack by mistake.
-        if self.ENV == "prod" and (self.LOCALSTACK_ENDPOINT or self.SQS_ENDPOINT_URL):
-            raise ValueError("LocalStack endpoints must not be configured in production.")
-        # Basic sanity for queue identification
-        if not (self.TERMINAL_SQS_QUEUE_URL or self.QUEUE_NAME):
-            raise ValueError("Either TERMINAL_SQS_QUEUE_URL or QUEUE_NAME must be set.")
+        return str(self.SQS_ENDPOINT_URL) if self.SQS_ENDPOINT_URL else None
 
 
-@lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    """ return settings"""
     try:
-        s = Settings()
-        s.ensure_valid()
-        return s
+        return Settings()
     except (ValidationError, ValueError) as e:
-        # Crash fast at startup if required envs are missing/invalid
         raise RuntimeError(f"[settings] Invalid configuration: {e}") from e

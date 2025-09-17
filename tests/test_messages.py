@@ -1,4 +1,3 @@
-# tests/test_messages.py
 import pytest
 from datetime import datetime, timedelta, timezone
 from httpx import Response
@@ -31,7 +30,6 @@ async def test_get_messages_returns_empty_list_when_none_newer(client, async_ses
     """
     When there are no messages newer than the provided timestamp, the endpoint returns 200 + [].
     """
-    # choose a future cutoff to be sure we get an empty list
     cutoff = datetime.now(timezone.utc) + timedelta(days=365)
     r: Response = await client.get(PATH, params={"since": cutoff.isoformat().replace("+00:00", "Z")})
     assert r.status_code == 200, r.text
@@ -49,7 +47,6 @@ async def test_get_messages_returns_only_strictly_newer(client, async_session: A
     equal = t0
     newer = t0 + timedelta(seconds=1)
 
-    # seed data
     m1 = await _add_message(async_session, older, "older")
     m2 = await _add_message(async_session, equal, "equal")
     m3 = await _add_message(async_session, newer, "newer")
@@ -58,7 +55,6 @@ async def test_get_messages_returns_only_strictly_newer(client, async_session: A
     assert r.status_code == 200, r.text
 
     items = r.json()
-    # only the strictly newer one should be returned
     assert len(items) == 1
     assert items[0]["id"] == m3.id
     assert items[0]["payload"] == "newer"
