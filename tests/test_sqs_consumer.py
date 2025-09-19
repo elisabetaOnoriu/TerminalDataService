@@ -1,4 +1,3 @@
-# tests/test_sqs_consumer_env_driven.py
 import asyncio
 import json
 import logging

@@ -21,6 +21,7 @@ aiosqlite = "^0.21.0"
 awscli = "^1.42.17"
 asyncpg = "^0.30.0"
 alembic = "^1.16.5"
+redis = "^6.4.0"
 
 [tool.poetry.group.dev.dependencies]
 alembic = "^1.16.4"

@@ -13,6 +13,10 @@ from pydantic import BaseModel
 class MessageResponse(BaseModel):
     id: int
     device_id:int
+    client_id: int
+    sensor: str | None
+    value: str | None
+    unit: str | None
     timestamp: datetime
     payload: str
 
