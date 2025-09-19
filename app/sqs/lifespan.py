@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """  Manage application lifespan events."""
     settings = get_settings()
     consumer: SQSConsumer | None = None
 
