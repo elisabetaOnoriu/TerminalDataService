@@ -12,6 +12,8 @@ from app.config.settings import Settings
 from app.helpers.ensure_entities import ensure_client, ensure_device
 from app.models.messageSummary import MessageSummary
 from app.helpers.message_helper import save_message
+from app.helpers.redis_client import get_redis, mirror_message_to_redis
+
 
 
 logger = logging.getLogger(__name__)
@@ -176,7 +178,7 @@ class SQSConsumer:
         summary = MessageSummary.from_body(body)
 
         if not summary.device_id or not summary.client_id:
-            raise ValueError("device_id/client_id lipsă în mesaj")
+            raise ValueError("device_id/client_id not found")
 
         async with self._sessionmaker() as session:
             try:
@@ -184,6 +186,18 @@ class SQSConsumer:
                 await ensure_device(session, int(summary.device_id), int(summary.client_id))
 
                 saved = await save_message(session, summary=summary)
+
+                message_dict = summary.as_dict()
+                message_dict.update({
+                    "id": str(saved.id),
+                    "payload": saved.payload,
+                })
+
+                try:
+                    r = await get_redis()
+                    await mirror_message_to_redis(r, message_dict)
+                except Exception:
+                    logger.exception("Redis mirror failed; continuing without blocking.")
 
                 logger.info(
                     "Saved message id=%s | device=%s client=%s sensor=%s value=%s%s time=%s",

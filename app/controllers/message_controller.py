@@ -9,19 +9,21 @@ Supports:
 - filters: device_id, from_ts/to_ts (ISO 8601; inclusive)
 
 """
-
+import json
 import logging
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy import select, func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
+import redis.asyncio as redis
 
 from app.helpers.database import get_db
+from app.helpers.redis_client import get_redis, settings
 from app.models.message_model import Message
-from app.models.message_schema import MessageResponse, PaginatedMessages
+from app.models.message_schema import MessageResponse, PaginatedMessages, LatestMessages
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -112,3 +114,44 @@ async def get_messages(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Database error while fetching messages",
         ) from e
+
+@router.get(
+    "/latest",
+    tags=["Messages"],
+    summary="Get the last N messages",
+    response_model=LatestMessages,
+    responses={
+        200: {"description": "Success "},
+        400: {"description": "Invalid request "},
+        500: {"description": "Server error while reading from Redis"},
+    },
+)
+async def get_latest_messages(
+        limit: int = Query(
+            default=None,
+            ge=1,
+            description=" Max items to return "
+        ),
+        r: redis.Redis = Depends(get_redis),
+):
+    "return the most recent mirrored messages from Redis"
+
+    try:
+        max_n = settings.REDIS_MAX_MESSAGES
+        n= min(limit,max_n)
+
+        redis_messages: List[str] = await r.lrange("latest:messages", 0, n-1)
+        messages: List[Dict[str, Any]]=[json.loads(x) for x in redis_messages]
+
+        return LatestMessages(
+            count=len(messages),
+            limit=n,
+            items=messages,
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch latest message {e}"
+        )
+
