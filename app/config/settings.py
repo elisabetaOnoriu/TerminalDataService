@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     SQS_THREAD_POOL_SIZE: int = Field(..., ge=1)
     SQS_VISIBILITY_TIMEOUT: int = Field(..., ge=1)
 
+    REDIS_URL: str =Field(..., description="Redis connection URL")
+    REDIS_MESSAGES_KEY:str =Field(..., description="Redis key for mirrored messages")
+    REDIS_MAX_MESSAGES: int = Field(..., ge=1, description="Maximum number of messages to keep in Redis")
+
     @model_validator(mode="after")
     def _post_validate(self) -> "Settings":
         if str(self.SQS_QUEUE_URL).startswith(("http://localhost:4566", "https://localhost:4566")) \

@@ -1,22 +1,25 @@
+.git
+.idea
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.pytest_cache/
 
-build/
-dist/
-*.egg-info/
 
-.venv/
-venv/
-
-.vscode/
-.idea/
-*.iml
-
-.git/
-.gitignore
-
-.env
-.env.*
+# Cache/artefacte
+localstack/
 .localstack/
+.logs/
+dist/
+build/
+
+# Date runtime care NU trebuie în imagine
+data/
+*.db
+*.sqlite
+
+# Alte fișiere mari/temporare
+*.log
+*.rdb
+*.aof

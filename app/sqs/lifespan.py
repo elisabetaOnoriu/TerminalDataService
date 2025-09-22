@@ -6,18 +6,20 @@ from fastapi import FastAPI
 from app.config.settings import get_settings
 from app.sqs.connector import connect_to_sqs
 from app.sqs.sqs_consumer import SQSConsumer
+from app.helpers.database import SessionLocal
 
 logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """  Manage application lifespan events."""
     settings = get_settings()
     consumer: SQSConsumer | None = None
 
     if not connect_to_sqs(queue_url=str(settings.SQS_QUEUE_URL)):
         logger.warning("SQS_QUEUE_URL missing/invalid; consumer will not start.")
     else:
-        consumer = SQSConsumer(settings)
+        consumer = SQSConsumer(settings, SessionLocal)
         await consumer.start()
         app.state.sqs_consumer = consumer
 

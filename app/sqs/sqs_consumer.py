@@ -2,13 +2,17 @@ from __future__ import annotations
 import json
 import asyncio
 import logging
+from sqlalchemy.exc import IntegrityError
 from typing import Any, Dict
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 import boto3
 import xml.etree.ElementTree as ET
 from botocore.config import Config as BotoConfig
 from app.config.settings import Settings
-from app.models.MessageSummary import MessageSummary
+from app.helpers.ensure_entities import ensure_client, ensure_device
+from app.models.messageSummary import MessageSummary
+from app.helpers.message_helper import save_message
+
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +26,7 @@ class SQSConsumer:
 
     """
 
-    def __init__(self, settings: Settings) -> None:
+    def __init__(self, settings: Settings, sessionmaker) -> None:
         """
          Asynchronous SQS consumer
          - Polls SQS via boto3.receive_message (run in a thread to avoid blocking the event loop)
@@ -38,6 +42,7 @@ class SQSConsumer:
         self.visibility_timeout = settings.SQS_VISIBILITY_TIMEOUT
         self.thread_pool_size = settings.SQS_THREAD_POOL_SIZE
 
+
         self._loop: asyncio.AbstractEventLoop | None = None
         self._stop = asyncio.Event()
         self._executor = ThreadPoolExecutor(
@@ -45,6 +50,7 @@ class SQSConsumer:
             thread_name_prefix="sqs-worker",
         )
         self._task = None
+        self._sessionmaker = sessionmaker
 
         self._sqs = boto3.client(
             "sqs",
@@ -166,8 +172,28 @@ class SQSConsumer:
         )
 
     async def _process_message(self, body: dict) -> None:
+        """Parse message body and save it into the database."""
         summary = MessageSummary.from_body(body)
-        logger.info(
-            "Processed message | device=%s client=%s sensor=%s value=%s%s time=%s",
-            summary.device_id, summary.client_id, summary.sensor, summary.value, summary.unit, summary.timestamp
-        )
+
+        if not summary.device_id or not summary.client_id:
+            raise ValueError("device_id/client_id lipsă în mesaj")
+
+        async with self._sessionmaker() as session:
+            try:
+                await ensure_client(session, int(summary.client_id))
+                await ensure_device(session, int(summary.device_id), int(summary.client_id))
+
+                saved = await save_message(session, summary=summary)
+
+                logger.info(
+                    "Saved message id=%s | device=%s client=%s sensor=%s value=%s%s time=%s",
+                    saved.id, summary.device_id, summary.client_id,
+                    summary.sensor, summary.value, summary.unit, summary.timestamp
+                )
+            except IntegrityError:
+                await session.rollback()
+                logger.exception(
+                    "FK/constraint error when saving message | device=%s client=%s",
+                    summary.device_id, summary.client_id
+                )
+                raise

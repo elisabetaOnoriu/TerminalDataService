@@ -1,4 +1,11 @@
 _pycache_
+__pycache__/
+*/__pycache__/
+**/__pycache__/
 .idea
 app/helpers/db_password.txt
 .localstack/cache
+data/redis/
+data/postgres/
+TerminalDataService/.git
+TerminalDataService/

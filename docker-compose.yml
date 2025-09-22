@@ -11,6 +11,32 @@ services:
     networks:
       - sky-comm
 
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    env_file:
+      - .env
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    networks:
+      - sky-comm
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - sky-comm
+
   app:
     build:
       context: .
@@ -22,8 +48,13 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      REDIS_URL: redis://redis:6379
     depends_on:
-      - localstack
+      localstack:
+        condition: service_started
+      redis:
+        condition: service_healthy
     networks:
       - sky-comm
 
