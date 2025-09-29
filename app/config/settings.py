@@ -32,7 +32,6 @@ class Settings(BaseSettings):
     SQS_VISIBILITY_TIMEOUT: int = Field(..., ge=1)
 
     REDIS_URL: str =Field(..., description="Redis connection URL")
-    REDIS_MESSAGES_KEY:str =Field(..., description="Redis key for mirrored messages")
     REDIS_MAX_MESSAGES: int = Field(..., ge=1, description="Maximum number of messages to keep in Redis")
 
     @model_validator(mode="after")

@@ -30,3 +30,28 @@ class PaginatedMessages(BaseModel):
     limit: int
     offset: int
     items: List[MessageResponse]
+
+
+class RedisMessageResponse(BaseModel):
+    id: int
+    device_id:int
+    client_id: int
+    sensor: str | None
+    value: str | None
+    unit: str | None
+    timestamp: str
+    payload: str
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
+
+class LatestMessages(BaseModel):
+    """
+       Response for GET /messages/latest (reads from Redis, newest-first).
+       """
+    count: int
+    limit: int
+    items: List[RedisMessageResponse]
