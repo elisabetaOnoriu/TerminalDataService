@@ -30,13 +30,14 @@ logger = logging.getLogger(__name__)
 
 def _parse_european_timestamp(ts: str) -> datetime:
     """
-    Parsează DOAR formatele europene:
-      - DD.MM.YYYY
-      - DD.MM.YYYY HH:MM
-      - DD.MM.YYYY HH:MM:SS
+        Parse ONLY European date formats:
+          - DD.MM.YYYY
+          - DD.MM.YYYY HH:MM
+          - DD.MM.YYYY HH:MM:SS
 
-    Întoarce datetime timezone-aware (UTC).
+        Returns a timezone-aware datetime (UTC).
     """
+
     if not isinstance(ts, str) or not ts.strip():
         raise HTTPException(status_code=400, detail="Missing timestamp")
 

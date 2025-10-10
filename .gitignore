@@ -9,3 +9,10 @@ data/redis/
 data/postgres/
 TerminalDataService/.git
 TerminalDataService/
+.venv/
+.vscode/
+__pycache__/
+*.pyc
+*.log
+.localstack
+.pytest_cache/
