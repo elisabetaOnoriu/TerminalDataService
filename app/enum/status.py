@@ -3,7 +3,8 @@
 import enum
 
 class Status(str, enum.Enum):
-    """enum """
+    """Enumeration of possible device connection states."""
+
     CONNECTED = "connected"
     DISCONNECTED = "disconnected"
     PENDING = "pending"

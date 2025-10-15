@@ -22,6 +22,9 @@ awscli = "^1.42.17"
 asyncpg = "^0.30.0"
 alembic = "^1.16.5"
 redis = "^6.4.0"
+kafka-python = "^2.2.15"
+celery = "^5.5.3"
+confluent-kafka = "^2.11.1"
 
 [tool.poetry.group.dev.dependencies]
 alembic = "^1.16.4"

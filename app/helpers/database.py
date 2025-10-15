@@ -36,7 +36,12 @@ engine = create_async_engine(DATABASE_URL, echo=False)
 SessionLocal = async_sessionmaker(bind=engine, expire_on_commit=False, class_=AsyncSession)
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """ get db"""
+    """
+    Dependency provider for an asynchronous SQLAlchemy database session.
+
+    It creates an `AsyncSession`, yields it for database operations, and ensures the
+    session is properly closed after use, even if an exception occurs.
+    """
     logger.info("Creating async DB session")
     async with SessionLocal() as session:
         try:
