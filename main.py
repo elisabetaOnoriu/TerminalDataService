@@ -1,6 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import queue
-from time import time
+import threading
+import time
 from fastapi import FastAPI
 from dotenv import load_dotenv
 
@@ -24,7 +25,7 @@ setup_logging()
 logger=logging.getLogger(__name__)
 
 def handle_message(msg: dict):
-    print("Handled:", msg)
+    print(f"[{threading.current_thread().name}] Handled: {msg}")
 
 # try:
 #     app = FastAPI(lifespan=lifespan)
@@ -52,6 +53,7 @@ if __name__ == "__main__":
     #     producerKafka.source.put({"hello_kafka": i})
 
     sqsConsumer=SqsConsumerWorker(
+            settings,
             queue_url="http://localhost:4566/000000000000/terminal-messages",
             region="us-east-1",
             handler=handle_message,
@@ -64,7 +66,7 @@ if __name__ == "__main__":
             region="us-east-1",
             endpoint_url="http://localhost:4566",
         )
-
+# producer kafka, consumer kafka = init _kafka
     for i in range(10):
         sqsProducer.enqueue({"hello_sqs": i})
 
@@ -79,7 +81,7 @@ if __name__ == "__main__":
         futures = [ex.submit(w.run) for w in workers]
         try:
             print(" Workers started. Ctrl+C to stop.")
-            while True: pass
+            # while True: pass
         except KeyboardInterrupt:
             print("\n[Main] Stop signal received.")
             for w in workers: w.stop()

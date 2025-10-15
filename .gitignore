@@ -1,7 +1,7 @@
 _pycache_
 __pycache__/
 */__pycache__/
-**/__pycache__/
+**/__pycache__/** 
 .idea
 app/helpers/db_password.txt
 .localstack/cache
@@ -14,5 +14,5 @@ TerminalDataService/
 __pycache__/
 *.pyc
 *.log
-.localstack
+.localstack/
 .pytest_cache/
