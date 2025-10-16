@@ -3,45 +3,44 @@ import json
 import time
 from typing import Callable, Optional
 import boto3
-from app.config.settings import Settings
 from app.workers.base_worker import BaseWorker
 
+from app.config.settings import get_settings
+
+settings = get_settings()
 class SqsConsumerWorker(BaseWorker):
-    def __init__(
-        self,
-        settings:Settings,
-        queue_url: str,
-        region: str,
-        handler: Callable[[dict], None],
-        wait_time_s: int = 10,
-        max_messages: int = 10,
-        endpoint_url: Optional[str] = None,
-    ):
+    def __init__(self, handler: Callable[[dict], None]):
         super().__init__(name="SQSConsumer")
-        self.queue_url = queue_url
-        self.region = region
+        self.queue_url =str(settings.SQS_QUEUE_URL)
         self.handler = handler
-        self.wait_time_s = wait_time_s
-        self.max_messages = max_messages
-        self.endpoint_url = endpoint_url
+        self.thread_pool_size = settings.SQS_THREAD_POOL_SIZE
+        self.wait_time = settings.SQS_WAIT_TIME_SECONDS
+        self.max_messages = settings.SQS_MAX_MESSAGES
+        self.sqs_endpoint = str(settings.SQS_ENDPOINT_URL) if settings.SQS_ENDPOINT_URL else None
         self.sqs = None
         self.executor = None
 
     def setup(self):
         if boto3 is None:
             raise RuntimeError("boto3 is not installed")
-        self.sqs = boto3.client("sqs", region_name=self.region, endpoint_url=self.endpoint_url)
+        
+        self.sqs = boto3.client(
+            "sqs",
+            region_name=settings.AWS_REGION,
+            endpoint_url=self.sqs_endpoint, # localhost, nu localstack 
+            )
+        
         self.executor= ThreadPoolExecutor(
-            max_workers=4,
+            max_workers=self.thread_pool_size,
             thread_name_prefix="sqs-worker",
         )
-        print(f"[{self.name}] connected to {self.queue_url} ({self.region})")
+        print(f"[{self.name}] connected to {self.queue_url} ({settings.AWS_REGION})")
 
     def process(self):
         try:
             resp = self.sqs.receive_message(
                 QueueUrl=self.queue_url,
-                WaitTimeSeconds=self.wait_time_s,      
+                WaitTimeSeconds=self.wait_time,      
                 MaxNumberOfMessages=self.max_messages 
             )
             
@@ -51,6 +50,7 @@ class SqsConsumerWorker(BaseWorker):
 
         messages = resp.get("Messages", [])
         for m in messages:
+            # time.sleep(4)
             self.executor.submit(self.handle_message, m)
 
     def handle_message(self, message: dict):

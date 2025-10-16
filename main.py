@@ -25,63 +25,46 @@ setup_logging()
 logger=logging.getLogger(__name__)
 
 def handle_message(msg: dict):
-    print(f"[{threading.current_thread().name}] Handled: {msg}")
+    print(f"[{threading.current_thread().name}] Event recieved: {msg}")
 
-# try:
-#     app = FastAPI(lifespan=lifespan)
-#     app.include_router(all_routes)
-
-#     logger.info(" FastAPI app and routes initialized")
-# except Exception as e:
-#     logger.error(f" Error during app setup: {e}")
-#     raise
-if __name__ == "__main__":
-    
-
+def init_kafka():
     admin = KafkaAdminClient(bootstrap_servers=["localhost:9092"])
-    try:
-        admin.create_topics([NewTopic(name="topic", num_partitions=1, replication_factor=1)])
-    except TopicAlreadyExistsError:
-        pass
-    finally:
-        admin.close()
-   
     consumerKafka=KafkaConsumerWorker("topic", "localhost:9092", "my-group", handler=handle_message)
     producerKafka=KafkaProducerWorker("topic","localhost:9092")
+    try:
+        admin.create_topics([NewTopic(name="topic", num_partitions=1, replication_factor=1)])
+        for i in range(1,6):
+            producerKafka.source.put({"hello_kafka": i})
+    except TopicAlreadyExistsError:
+        pass
+    admin.close()
+    return producerKafka,consumerKafka, 
 
-    # for i in range(5):
-    #     producerKafka.source.put({"hello_kafka": i})
+def init_sqs():
+    sqsConsumer=SqsConsumerWorker(handler=handle_message)
+    sqsProducer = SqsProducerWorker()
 
-    sqsConsumer=SqsConsumerWorker(
-            settings,
-            queue_url="http://localhost:4566/000000000000/terminal-messages",
-            region="us-east-1",
-            handler=handle_message,
-            wait_time_s=10,
-            max_messages=10,
-            endpoint_url="http://localhost:4566",
-        )
-    sqsProducer = SqsProducerWorker(
-            queue_url="http://localhost:4566/000000000000/terminal-messages",
-            region="us-east-1",
-            endpoint_url="http://localhost:4566",
-        )
-# producer kafka, consumer kafka = init _kafka
-    for i in range(10):
-        sqsProducer.enqueue({"hello_sqs": i})
+    for i in range(1,11):
+        sqsProducer.enqueue({"emit event ": i})
+    return sqsProducer,sqsConsumer
+
+
+if __name__ == "__main__":
+
+    producerKafka,consumerKafka=init_kafka()
+    sqsProducer,sqsConsumer=init_sqs()
 
     workers = [
-            consumerKafka,
             producerKafka,
-            sqsConsumer,
-            sqsProducer
+            sqsProducer,
+            consumerKafka,
+            sqsConsumer
         ]
 
     with ThreadPoolExecutor(max_workers=len(workers), thread_name_prefix="worker") as ex:
         futures = [ex.submit(w.run) for w in workers]
         try:
             print(" Workers started. Ctrl+C to stop.")
-            # while True: pass
         except KeyboardInterrupt:
             print("\n[Main] Stop signal received.")
             for w in workers: w.stop()
