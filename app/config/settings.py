@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     AWS_REGION: str = Field(..., description="AWS region (required)")
 
     SQS_QUEUE_URL: AnyUrl = Field(..., description="Full SQS queue URL (required)")
-    SQS_ENDPOINT_URL: AnyUrl | None = None
+    SQS_ENDPOINT_URL: AnyUrl=Field(..., description="Sqs endpoint URL (required)")
 
     DB_USER: str = Field(..., description="DB user")
     DB_HOST: str = Field(..., description="DB host")
@@ -66,13 +66,6 @@ class Settings(BaseSettings):
                 f"postgresql+asyncpg://{self.DB_USER}:{password}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
             )
         return self
-
-    @property
-    def sqs_effective_endpoint(self) -> Optional[str]:
-        """
-        Return the effective SQS endpoint URL.
-        """
-        return str(self.SQS_ENDPOINT_URL) if self.SQS_ENDPOINT_URL else None
 
 
 def get_settings() -> Settings:
