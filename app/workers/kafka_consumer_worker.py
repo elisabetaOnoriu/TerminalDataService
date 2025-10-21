@@ -1,10 +1,13 @@
 import json
 import time
 from typing import Callable, Optional
+import logging
 from kafka import KafkaConsumer
 from kafka.structs import TopicPartition, OffsetAndMetadata
 from app.workers.base_worker import BaseWorker
-
+from logging_config import setup_logging
+setup_logging()
+logger=logging.getLogger(__name__)
 class KafkaConsumerWorker(BaseWorker):
     """
     Consumes messages from a Kafka topic and calls a handler.
@@ -47,7 +50,7 @@ class KafkaConsumerWorker(BaseWorker):
                 self.c.commit({tp: OffsetAndMetadata(r.offset + 1, None)})
             except Exception:
                 pass
-
+            
     def stop(self):
         super().stop()
         try:

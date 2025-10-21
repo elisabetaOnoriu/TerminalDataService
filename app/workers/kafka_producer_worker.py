@@ -25,13 +25,14 @@ class KafkaProducerWorker(BaseWorker):
             value_serializer=lambda v: json.dumps(v).encode("utf-8"),
         )
 
-    def process(self):
+    def process(self): # a procesa, aici emit
         try:
             payload = self.source.get(timeout=1)
         except queue.Empty:
             time.sleep(1)
             return
         self.p.send(self.topic, payload)
+        print(f"[{self.name}] Sent message to topic '{self.topic}': {payload}")
 
     def stop(self):
         super().stop()

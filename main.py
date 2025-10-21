@@ -20,12 +20,19 @@ from logging_config import setup_logging
 import logging
 from app.models.base import Base
 from app.sqs.lifespan import lifespan
+from celery_app.task import process_event
+
 
 setup_logging()
 logger=logging.getLogger(__name__)
 
 def handle_message(msg: dict):
-    print(f"[{threading.current_thread().name}] Event recieved: {msg}")
+     process_event.delay(msg=msg)
+    # print(job.id)
+    # print(job.get(timeout=5))                 
+    # print(job.status)             # PENDING / STARTED / SUCCESS / FAILURE (dacă ai backend)
+    # print("queued:", job.id)  
+    # print(f"[{threading.current_thread().name}] Event recieved: {msg}")
 
 def init_kafka():
     admin = KafkaAdminClient(bootstrap_servers=["localhost:9092"])
@@ -33,11 +40,13 @@ def init_kafka():
     producerKafka=KafkaProducerWorker("topic","localhost:9092")
     try:
         admin.create_topics([NewTopic(name="topic", num_partitions=1, replication_factor=1)])
-        for i in range(1,6):
-            producerKafka.source.put({"hello_kafka": i})
+        # for i in range(1,6):
+        #     producerKafka.source.put({"hello_kafka": i})
     except TopicAlreadyExistsError:
         pass
     admin.close()
+    # for i in range(1,6):
+    #         producerKafka.source.put({"emit event kafka": i})
     return producerKafka,consumerKafka, 
 
 def init_sqs():
@@ -45,7 +54,7 @@ def init_sqs():
     sqsProducer = SqsProducerWorker()
 
     for i in range(1,11):
-        sqsProducer.enqueue({"emit event ": i})
+        sqsProducer.enqueue({"emit event sqs ": i})
     return sqsProducer,sqsConsumer
 
 
@@ -70,4 +79,3 @@ if __name__ == "__main__":
             for w in workers: w.stop()
             for f in as_completed(futures): f.result()
     print("[Main] All workers stopped.")
-

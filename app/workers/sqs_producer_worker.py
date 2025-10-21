@@ -25,6 +25,6 @@ class SqsProducerWorker(BaseWorker):
         try:
             payload = self.source.get(timeout=1)
         except queue.Empty:
-            time.sleep(0.2); return
+            return
         self.sqs.send_message(QueueUrl=self.queue_url, MessageBody=json.dumps(payload))
         print(f"[{self.name}] Sent message to {self.queue_url}: {payload}")
