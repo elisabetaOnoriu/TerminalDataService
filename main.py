@@ -30,7 +30,7 @@ def handle_message(msg: dict):
      process_event.delay(msg=msg)
     # print(job.id)
     # print(job.get(timeout=5))                 
-    # print(job.status)             # PENDING / STARTED / SUCCESS / FAILURE (dacă ai backend)
+    # print(job.status)            
     # print("queued:", job.id)  
     # print(f"[{threading.current_thread().name}] Event recieved: {msg}")
 
