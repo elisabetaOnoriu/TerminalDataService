@@ -9,7 +9,7 @@ from app.config.settings import get_settings
 
 settings = get_settings()
 class SqsConsumerWorker(BaseWorker):
-    def __init__(self, handler: Callable[[dict], None]):
+    def __init__(self, handler: Optional[Callable[[dict], None]] = None):
         super().__init__(name="SQSConsumer")
         self.queue_url =str(settings.SQS_QUEUE_URL)
         self.handler = handler
