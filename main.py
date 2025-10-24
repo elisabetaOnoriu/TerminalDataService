@@ -20,62 +20,66 @@ from logging_config import setup_logging
 import logging
 from app.models.base import Base
 from app.sqs.lifespan import lifespan
-from celery_app.task import process_event
+# from celery_app.task import process_event
+from celery_app.task import emit
 
 
 setup_logging()
 logger=logging.getLogger(__name__)
 
-def handle_message(msg: dict):
-     process_event.delay(msg=msg)
-    # print(job.id)
-    # print(job.get(timeout=5))                 
-    # print(job.status)            
-    # print("queued:", job.id)  
-    # print(f"[{threading.current_thread().name}] Event recieved: {msg}")
 
-def init_kafka():
-    admin = KafkaAdminClient(bootstrap_servers=["localhost:9092"])
-    consumerKafka=KafkaConsumerWorker("topic", "localhost:9092", "my-group", handler=handle_message)
-    producerKafka=KafkaProducerWorker("topic","localhost:9092")
-    try:
-        admin.create_topics([NewTopic(name="topic", num_partitions=1, replication_factor=1)])
-        # for i in range(1,6):
-        #     producerKafka.source.put({"hello_kafka": i})
-    except TopicAlreadyExistsError:
-        pass
-    admin.close()
-    # for i in range(1,6):
-    #         producerKafka.source.put({"emit event kafka": i})
-    return producerKafka,consumerKafka, 
+# def handle_message(msg: dict):
+#      process_event.delay(msg=msg)  # taskul pe care il are de facut 
+#     # print(f"[{threading.current_thread().name}] Event recieved: {msg}")
 
-def init_sqs():
-    sqsConsumer=SqsConsumerWorker(handler=handle_message)
-    sqsProducer = SqsProducerWorker()
+# def init_kafka():
+#     admin = KafkaAdminClient(bootstrap_servers=["localhost:9092"])
+#     # consumerKafka=KafkaConsumerWorker("topic", "localhost:9092", "my-group", handler=handle_message)
+#     consumerKafka=KafkaConsumerWorker("topic", "localhost:9092", "my-group")
 
-    for i in range(1,11):
-        sqsProducer.enqueue({"emit event sqs ": i})
-    return sqsProducer,sqsConsumer
+#     producerKafka=KafkaProducerWorker("topic","localhost:9092")
+#     try:
+#         admin.create_topics([NewTopic(name="topic", num_partitions=1, replication_factor=1)])
+#         # for i in range(1,6):
+#         #     producerKafka.source.put({"hello_kafka": i})
+#     except TopicAlreadyExistsError:
+#         pass
+#     admin.close()
+#     # for i in range(1,6):
+#     #         producerKafka.source.put({"emit event kafka": i})
+#     return producerKafka,consumerKafka, 
+
+# def init_sqs():
+#     # sqsConsumer=SqsConsumerWorker(handler=handle_message)
+#     sqsConsumer=SqsConsumerWorker()
+#     sqsProducer = SqsProducerWorker()
+
+#     for i in range(1,11):
+#         sqsProducer.enqueue({"emit event sqs ": i})
+#     return sqsProducer,sqsConsumer
 
 
 if __name__ == "__main__":
 
-    producerKafka,consumerKafka=init_kafka()
-    sqsProducer,sqsConsumer=init_sqs()
 
-    workers = [
-            producerKafka,
-            sqsProducer,
-            consumerKafka,
-            sqsConsumer
-        ]
+    # for i in range(10):
+    #     emit.delay(f"am emis mesajul {i}")
 
-    with ThreadPoolExecutor(max_workers=len(workers), thread_name_prefix="worker") as ex:
-        futures = [ex.submit(w.run) for w in workers]
-        try:
-            print(" Workers started. Ctrl+C to stop.")
-        except KeyboardInterrupt:
-            print("\n[Main] Stop signal received.")
-            for w in workers: w.stop()
-            for f in as_completed(futures): f.result()
+    # producerKafka,consumerKafka=init_kafka()
+    # sqsProducer,sqsConsumer=init_sqs()
+    # workers = [
+    #         producerKafka,
+    #         sqsProducer,
+    #         consumerKafka,
+    #         sqsConsumer
+    #     ]
+
+    # with ThreadPoolExecutor(max_workers=len(workers), thread_name_prefix="worker") as ex:
+    #     futures = [ex.submit(w.run) for w in workers]
+    #     try:
+    #         print(" Workers started. Ctrl+C to stop.")
+    #     except KeyboardInterrupt:
+    #         print("\n[Main] Stop signal received.")
+    #         for w in workers: w.stop()
+    #         for f in as_completed(futures): f.result()
     print("[Main] All workers stopped.")

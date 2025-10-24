@@ -14,7 +14,7 @@ class KafkaConsumerWorker(BaseWorker):
     Commits each record only after the handler succeeds (at-least-once).
     """
 
-    def __init__(self, topic: str,server:str, group_id: str, handler: Callable[[dict], None]):
+    def __init__(self, topic: str,server:str, group_id: str, handler: Optional[Callable[[dict], None]] = None):
         """ Initialize the worker with Kafka connection details and a message handler """
         super().__init__(name=f"KafkaConsumer-{topic}")
         self.topic = topic
