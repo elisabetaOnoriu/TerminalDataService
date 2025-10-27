@@ -5,13 +5,8 @@ import time
 from fastapi import FastAPI
 from dotenv import load_dotenv
 
-from app.config import settings
-from app.workers.kafka_producer_worker import KafkaProducerWorker
-from app.workers.kafka_consumer_worker import KafkaConsumerWorker
-from app.workers.sqs_consumer_worker import SqsConsumerWorker
-from app.workers.sqs_producer_worker import SqsProducerWorker
-from kafka.admin import KafkaAdminClient, NewTopic
-from kafka.errors import TopicAlreadyExistsError
+from app.workers.init_workers import init_kafka, init_sqs
+from celery_service.run import start_beat, start_worker
 
 load_dotenv()
 from app.routers import router as all_routes
@@ -20,50 +15,21 @@ from logging_config import setup_logging
 import logging
 from app.models.base import Base
 from app.sqs.lifespan import lifespan
-# from celery_app.task import process_event
-from celery_app.task import emit
-
 
 setup_logging()
 logger=logging.getLogger(__name__)
 
-
-# def handle_message(msg: dict):
-#      process_event.delay(msg=msg)  # taskul pe care il are de facut 
-#     # print(f"[{threading.current_thread().name}] Event recieved: {msg}")
-
-# def init_kafka():
-#     admin = KafkaAdminClient(bootstrap_servers=["localhost:9092"])
-#     # consumerKafka=KafkaConsumerWorker("topic", "localhost:9092", "my-group", handler=handle_message)
-#     consumerKafka=KafkaConsumerWorker("topic", "localhost:9092", "my-group")
-
-#     producerKafka=KafkaProducerWorker("topic","localhost:9092")
-#     try:
-#         admin.create_topics([NewTopic(name="topic", num_partitions=1, replication_factor=1)])
-#         # for i in range(1,6):
-#         #     producerKafka.source.put({"hello_kafka": i})
-#     except TopicAlreadyExistsError:
-#         pass
-#     admin.close()
-#     # for i in range(1,6):
-#     #         producerKafka.source.put({"emit event kafka": i})
-#     return producerKafka,consumerKafka, 
-
-# def init_sqs():
-#     # sqsConsumer=SqsConsumerWorker(handler=handle_message)
-#     sqsConsumer=SqsConsumerWorker()
-#     sqsProducer = SqsProducerWorker()
-
-#     for i in range(1,11):
-#         sqsProducer.enqueue({"emit event sqs ": i})
-#     return sqsProducer,sqsConsumer
-
-
 if __name__ == "__main__":
-
-
-    # for i in range(10):
-    #     emit.delay(f"am emis mesajul {i}")
+   
+    worker = start_worker()
+    beat = start_beat()
+    try:
+        worker.wait()
+        beat.wait()
+    finally:
+        # worker.terminate()
+        # beat.terminate()
+        pass
 
     # producerKafka,consumerKafka=init_kafka()
     # sqsProducer,sqsConsumer=init_sqs()
@@ -82,4 +48,4 @@ if __name__ == "__main__":
     #         print("\n[Main] Stop signal received.")
     #         for w in workers: w.stop()
     #         for f in as_completed(futures): f.result()
-    print("[Main] All workers stopped.")
+    # print("[Main] All workers stopped.")
