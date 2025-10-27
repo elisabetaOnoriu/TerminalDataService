@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from dotenv import load_dotenv
 
 from app.workers.init_workers import init_kafka, init_sqs
-from celery_service.run import start_beat, start_worker
+from app.celery_service.run import start_beat, start_worker
 
 load_dotenv()
 from app.routers import router as all_routes
@@ -23,14 +23,10 @@ if __name__ == "__main__":
    
     worker = start_worker()
     beat = start_beat()
-    try:
-        worker.wait()
-        beat.wait()
-    finally:
-        # worker.terminate()
-        # beat.terminate()
-        pass
-
+    
+    worker.wait()
+    beat.wait()
+   
     # producerKafka,consumerKafka=init_kafka()
     # sqsProducer,sqsConsumer=init_sqs()
     # workers = [
