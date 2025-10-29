@@ -8,6 +8,7 @@ services:
       - "4566:4566"
     volumes:
       - "./.localstack:/var/lib/localstack"
+      - "./localstack-init:/etc/localstack/init/ready.d"
     networks:
       - sky-comm
 
@@ -34,6 +35,30 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    networks:
+      - sky-comm
+  
+  worker:
+    build: .
+    container_name: terminal-service-worker
+    command: ["celery", "-A", "app.celery_service.task:celery", "worker", "--loglevel=INFO", "--concurrency=4"]
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks: 
+      - sky-comm
+
+  beat:
+    build: .
+    container_name: terminal-service-beat
+    command: ["celery","-A","app.celery_service.task:celery","beat","--loglevel=INFO"]
+    env_file: 
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
     networks:
       - sky-comm
 

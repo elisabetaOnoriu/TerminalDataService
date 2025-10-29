@@ -1,13 +1,13 @@
 import subprocess, sys
 
-def start_worker():
-    return subprocess.Popen(
-        [sys.executable, "-m", "celery", "-A", "app.celery_service.task:celery",
-         "worker", "-l", "INFO", "--concurrency", "4"]
-    )
+def spayn(process_type: str, concurrency: int = 4):
+    cmd = [
+        sys.executable, "-m", "celery",
+        "-A", "app.celery_service.task:celery",
+        process_type, "-l", "INFO"
+    ]
 
-def start_beat():
-    return subprocess.Popen(
-        [sys.executable, "-m", "celery", "-A", "app.celery_service.task:celery",
-         "beat", "-l", "INFO"]
-    )
+    if process_type == "worker":
+        cmd += ["--concurrency", str(concurrency)]
+
+    return subprocess.Popen(cmd)

@@ -1,30 +1,32 @@
 import json
-import boto3
 from app.celery_service.config import celery
-import redis
 from app.config.settings import get_settings
-from app.celery_service.init import sqs, SQS_QUEUE_URL, r, COUNTER_KEY
+from app.celery_service.clients import get_redis, get_sqs
 
 settings = get_settings()
-
-@celery.task(name="emit") #vezi cum se manifesta cand fol docker 
+COUNTER_KEY = "sqs_emit_counter"
+@celery.task(name="emit") #to watch in docker 
 def emit():
+    sqs = get_sqs()
+    r=get_redis()
+    r.setnx("sqs_emit_counter", 0)
     n=r.incr(COUNTER_KEY)
-    msg = f" mesajul: {n}"
-    sqs.send_message(QueueUrl=SQS_QUEUE_URL, MessageBody=json.dumps(msg))
-    print(f"am emis {msg}")
+    msg = f" message: {n}"
+    sqs.send_message(QueueUrl= str(settings.SQS_QUEUE_URL), MessageBody=json.dumps(msg))
+    print(f"emit {msg}")
 
 @celery.task(name="consume")
 def consume(msg: dict, receipt_handle: str):
     """Process a single SQS message."""
+    sqs = get_sqs()
+    print(f"consume {msg}")
 
-    print(f"consum {msg}")
-
-    sqs.delete_message(QueueUrl=SQS_QUEUE_URL, ReceiptHandle=receipt_handle)
+    sqs.delete_message(QueueUrl= str(settings.SQS_QUEUE_URL), ReceiptHandle=receipt_handle)
 
 @celery.task(name="poll_sqs")
 def poll_sqs():
     """Poll SQS for messages and enqueue them for processing."""
+    sqs = get_sqs()
     resp = sqs.receive_message(
         QueueUrl=str(settings.SQS_QUEUE_URL),
         WaitTimeSeconds=int(settings.SQS_WAIT_TIME_SECONDS),      
